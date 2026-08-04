@@ -8,11 +8,13 @@ import asyncio
 import tempfile
 import edge_tts
 import pygame
+import speech_recognition as sr
 
 load_dotenv()
 pygame.mixer.init()
 
 GROQ_API_KEY = os.getenv("GROQ_API_KEY")
+recognizer = sr.Recognizer()
 
 if not GROQ_API_KEY:
     print("Erro: defina GROQ_API_KEY no arquivo .env antes de rodar.")
@@ -70,6 +72,17 @@ def speaking(text):
             os.remove(output_path)
 
 while True:       #Main loop
+    with sr.Microphone() as speak:
+        print('You can say now: ')
+        audio = recognizer.listen(speak)
+    
+    try:
+        text = recognizer.recognize_google(audio, language='pt-BR')   #Change this line if you want to change the audio that is going to be perceived
+    except sr.UnkownValueError:
+        print("Something went wrong when we were trying to transcript your audio.")
+    except sr.RequestError:
+        print("Try connecting to an another connection, we could connect to the server.")
+
     user_text = input('Insira o que quer falar: ').strip()
     if user_text.lower() in ['sair', 'exit']:
         print('Ok, encerrando processos!')
