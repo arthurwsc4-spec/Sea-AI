@@ -9,7 +9,7 @@ import tempfile
 import edge_tts
 import pygame
 import speech_recognition as sr
-import Jarvis_orb2
+import Jarvis_orb
 
 load_dotenv()
 pygame.mixer.init()
@@ -79,12 +79,13 @@ while True:       #Main loop
     
     try:
         text = recognizer.recognize_google(audio, language='pt-BR')   #Change this line if you want to change the audio that is going to be perceived
-    except sr.UnkownValueError:
+    except sr.UnknownValueError:
         print("Something went wrong when we were trying to transcript your audio.")
+        continue
     except sr.RequestError:
         print("Try connecting to an another connection, we could connect to the server.")
+        continue
 
-    text = input('Insira o que quer falar: ').strip()
     if text.lower() in ['sair', 'exit']:
         print('Ok, encerrando processos!')
         break
@@ -108,7 +109,7 @@ while True:       #Main loop
         model="openai/gpt-oss-120b",
         messages=history_of_conversation,
         temperature=0.7,
-        max_tokens=300,)
+        max_tokens=512,)
     
     reply = response_AI.choices[0].message.content.strip()
     history_of_conversation.append({"role": "assistant", "content": reply})
