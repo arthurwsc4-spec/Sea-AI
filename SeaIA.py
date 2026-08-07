@@ -117,3 +117,4 @@ while True:       #Main loop
     print((f'\nSeaAI: {formatted_text}\n')) 
 
     speaking(reply)
+#Code still in construction
