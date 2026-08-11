@@ -6,7 +6,6 @@ from PyQt6.QtWidgets import QApplication, QWidget, QVBoxLayout
 from Jarvis_orb import SpeakingOrb
 from worker import SeaAIWorker
 
-
 class MainWindow(QWidget):
     def __init__(self, worker, thread):
         super().__init__()
