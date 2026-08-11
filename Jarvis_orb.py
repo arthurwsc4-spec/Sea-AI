@@ -75,7 +75,6 @@ class SpeakingOrb(QWidget):
             logo_y = (center_y - scaled_logo.height() / 2) - 3
             painter.drawPixmap(int(logo_x), int(logo_y), scaled_logo)
 
-
 if __name__ == "__main__":
     app = QApplication(sys.argv)
     window = QWidget()
