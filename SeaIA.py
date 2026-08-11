@@ -20,16 +20,9 @@ class MainWindow(QWidget):
         self.resize(300, 300)
 
     def closeEvent(self, event):
-        # Ask the worker loop to stop. Because _listen() now uses a 5s
-        # timeout, the loop notices this within a few seconds instead of
-        # hanging on a blocked microphone read.
         self.worker.stop()
 
         if not self.thread.wait(8000):
-            # The worker did not stop in time. terminate() is a blunt,
-            # unsafe last resort: it can leave a temp audio file or the
-            # mixer in an inconsistent state. Acceptable only because this
-            # is app shutdown, with nothing left to recover afterward.
             self.thread.terminate()
             self.thread.wait()
 
