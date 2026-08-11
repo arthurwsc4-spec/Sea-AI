@@ -24,6 +24,7 @@ class SpeakingOrb(QWidget):
         self.state = "Idle"
         self.phase = 0.0
 
+        # Load the logo once, resolved relative to this script's location
         script_dir = os.path.dirname(os.path.abspath(__file__))
         logo_path = os.path.join(script_dir, "shared image.png")
         self.logo = QPixmap(logo_path)
@@ -64,8 +65,9 @@ class SpeakingOrb(QWidget):
         painter.setBrush(gradient)
         painter.drawEllipse(int(center_x - radius), int(center_y - radius), int(radius * 2), int(radius * 2))
 
+        # Draw the logo centered, scaled to fit inside the orb
         if not self.logo.isNull():
-            logo_size = int(base_radius * 0.95)  # modify the scale as you like
+            logo_size = int(base_radius * 0.95)  # tweak scale as you like
             scaled_logo = self.logo.scaled(
                 logo_size, logo_size,
                 Qt.AspectRatioMode.KeepAspectRatio,
@@ -74,6 +76,7 @@ class SpeakingOrb(QWidget):
             logo_x = center_x - scaled_logo.width() / 2
             logo_y = (center_y - scaled_logo.height() / 2) - 3
             painter.drawPixmap(int(logo_x), int(logo_y), scaled_logo)
+
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)
