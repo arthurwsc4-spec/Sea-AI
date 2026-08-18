@@ -1,14 +1,13 @@
 import sys
 
+
 from PyQt6.QtCore import Qt, QThread
 from PyQt6.QtWidgets import (
     QApplication, QWidget, QVBoxLayout, QHBoxLayout,
     QPushButton, QTextEdit, QLineEdit,
 )
-
 from Jarvis_orb import SpeakingOrb
 from worker import SeaAIWorker
-
 
 class MainWindow(QWidget):
     def __init__(self, worker, thread):
@@ -17,16 +16,27 @@ class MainWindow(QWidget):
         self.thread = thread
 
         self.setWindowTitle("SeaAI")
+        self.setStyleSheet("background-color: #121214; color: Gray;")
         self.resize(600, 340)
 
         root_layout = QHBoxLayout(self)
 
-        # Left side: toggle button + orb
         orb_side = QVBoxLayout()
 
         self.toggle_button = QPushButton("Chat")
         self.toggle_button.clicked.connect(self._toggle_chat)
         orb_side.addWidget(self.toggle_button, alignment=Qt.AlignmentFlag.AlignRight)
+
+        self.mic_button = QPushButton("Mic: On")
+        self.mic_button.setCheckable(True)
+        self.mic_button.setChecked(True)
+        self.mic_button.clicked.connect(self._toggle_mic)
+        orb_side.addWidget(self.mic_button, alignment=Qt.AlignmentFlag.AlignRight)
+
+        if not self.worker.mic_available:
+            self.mic_button.setChecked(False)
+            self.mic_button.setText("Mic: Unavailable")
+            self.mic_button.setEnabled(False)
 
         self.orb = SpeakingOrb()
         orb_side.addWidget(self.orb, alignment=Qt.AlignmentFlag.AlignCenter)
@@ -34,7 +44,6 @@ class MainWindow(QWidget):
 
         root_layout.addLayout(orb_side)
 
-        # Right side: chat panel, hidden by default
         self.chat_panel = QWidget()
         chat_layout = QVBoxLayout(self.chat_panel)
 
@@ -61,6 +70,11 @@ class MainWindow(QWidget):
     def _toggle_chat(self):
         self.chat_panel.setVisible(not self.chat_panel.isVisible())
 
+    def _toggle_mic(self):
+        enabled = self.mic_button.isChecked()
+        self.mic_button.setText("Mic: On" if enabled else "Mic: Off")
+        self.worker.set_listening_enabled(enabled)
+
     def _send_text(self):
         text = self.chat_input.text().strip()
         if not text:
@@ -79,32 +93,16 @@ class MainWindow(QWidget):
 
     def closeEvent(self, event):
         self.worker.stop()
-
-        # Tell the thread's event loop to quit directly, right here, on
-        # this thread. Do NOT rely only on worker.finished -> thread.quit()
-        # for this: that connection is queued (thread, the QThread object,
-        # lives on the main thread), so it needs the main thread's event
-        # loop to dispatch it. But wait() below blocks that same event
-        # loop, so the queued call would never be delivered and this would
-        # deadlock until the terminate() fallback. Calling quit() directly
-        # is not subject to that.
         self.thread.quit()
-
-        # Listening/text-input waits are short (a few seconds), but if a
-        # Groq or TTS call is in flight, each is capped at 15s (see
-        # worker.py), so the worst case for a pending iteration is close
-        # to 30s.
         if not self.thread.wait(35000):
-            # Last-resort, unsafe fallback: should not normally trigger
-            # now that quit() is called directly above.
             self.thread.terminate()
             self.thread.wait()
 
         event.accept()
 
-
 def main():
     app = QApplication(sys.argv)
+
 
     try:
         worker = SeaAIWorker()
@@ -112,8 +110,10 @@ def main():
         print(f"Failed to start SeaAI: {e}")
         sys.exit(1)
 
+
     thread = QThread()
     worker.moveToThread(thread)
+
 
     thread.started.connect(worker.run)
     worker.finished.connect(thread.quit)
@@ -130,7 +130,6 @@ def main():
     thread.start()
 
     sys.exit(app.exec())
-
 
 if __name__ == "__main__":
     main()
