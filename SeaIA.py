@@ -1,12 +1,10 @@
 import sys
-
-
 from PyQt6.QtCore import Qt, QThread
 from PyQt6.QtWidgets import (
     QApplication, QWidget, QVBoxLayout, QHBoxLayout,
     QPushButton, QTextEdit, QLineEdit,
 )
-from Jarvis_orb import SpeakingOrb
+from Jarvis_Orb import SpeakingOrb
 from worker import SeaAIWorker
 
 class MainWindow(QWidget):
@@ -102,18 +100,14 @@ class MainWindow(QWidget):
 
 def main():
     app = QApplication(sys.argv)
-
-
     try:
         worker = SeaAIWorker()
     except RuntimeError as e:
         print(f"Failed to start SeaAI: {e}")
         sys.exit(1)
 
-
     thread = QThread()
     worker.moveToThread(thread)
-
 
     thread.started.connect(worker.run)
     worker.finished.connect(thread.quit)
