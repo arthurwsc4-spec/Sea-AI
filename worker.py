@@ -46,7 +46,7 @@ class SeaAIWorker(QObject):
         except Exception as e:
             raise RuntimeError(f"Could not read '{content_path}': {e}")
 
-        self.mic_device_index = self._find_mic_device_index("3- USB AUDIO")
+        self.mic_device_index = self._find_mic_device_index("1- MICROPHONE") #change mic type
 
         try:
             sr.Microphone(device_index=self.mic_device_index)
@@ -119,7 +119,6 @@ class SeaAIWorker(QObject):
             pass
 
         if not self.mic_available or not self.listening_enabled:
-            # No mic at all: just wait on the queue instead of busy-looping.
             try:
                 return self.text_queue.get(timeout=1)
             except queue.Empty:
@@ -131,14 +130,9 @@ class SeaAIWorker(QObject):
         try:
             with sr.Microphone(device_index=self.mic_device_index) as source:
                 audio = self.recognizer.listen(source, timeout=5, phrase_time_limit=15)
-                # timeout: give up waiting for speech after 5s, so the loop
-                # re-checks the text queue and self._running instead of
-                # blocking forever. phrase_time_limit: cap one utterance at 15s.
         except sr.WaitTimeoutError:
             return None
         except OSError as e:
-            # Device-level failure (unplugged, driver issue, etc.). Degrade
-            # to chat-only instead of killing the whole worker.
             self.mic_available = False
             self.error_occurred.emit(f"Microphone error, switching to chat only: {e}")
             return None
