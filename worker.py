@@ -13,18 +13,20 @@ from pypdf import PdfReader
 
 load_dotenv()
 
-
 class SeaAIWorker(QObject):
-    # Emitted with one of: "Idle", "Listening", "Thinking", "Speaking"
     state_changed = pyqtSignal(str)
-    # Emitted with whatever the user said or typed, for the chat log
     user_text_received = pyqtSignal(str)
-    # Emitted with the AI's text reply, for the chat log
     reply_ready = pyqtSignal(str)
-    # Emitted with a human-readable error message
     error_occurred = pyqtSignal(str)
-    # Emitted once the pipeline stops (user said "sair"/"exit", or a fatal error)
     finished = pyqtSignal()
+
+    @staticmethod
+    def _find_mic_device_index(name_hint):
+        names = sr.Microphone.list_microphone_names()
+        for index, name in enumerate(names):
+            if name_hint.lower() in name.lower():
+                return index
+        return None
 
     def __init__(self, content_path=None):
         super().__init__()
@@ -44,11 +46,10 @@ class SeaAIWorker(QObject):
         except Exception as e:
             raise RuntimeError(f"Could not read '{content_path}': {e}")
 
-        # Microphone is no longer a hard requirement: if it's unavailable,
-        # the worker still runs and falls back to the text queue fed by
-        # the chat panel. Only the API key and content.txt are fatal.
+        self.mic_device_index = self._find_mic_device_index("3- USB AUDIO")
+
         try:
-            sr.Microphone()
+            sr.Microphone(device_index=self.mic_device_index)
             self.mic_available = True
             self._mic_error = None
         except Exception as e:
@@ -60,6 +61,7 @@ class SeaAIWorker(QObject):
         self.ai_voice = "pt-BR-FranciscaNeural"
         self.text_queue = queue.Queue()
         self._running = True
+        self.listening_enabled = True
 
         try:
             pygame.mixer.init()
@@ -70,9 +72,6 @@ class SeaAIWorker(QObject):
         self._running = False
 
     def submit_text(self, text):
-        # Called directly from the GUI thread (chat input). queue.Queue is
-        # internally locked, so this is safe to call across threads without
-        # any extra signal/slot indirection.
         text = text.strip()
         if text:
             self.text_queue.put(text)
@@ -114,14 +113,12 @@ class SeaAIWorker(QObject):
         self.finished.emit()
 
     def _get_input(self):
-        # Typed text always takes priority: check the queue first, without
-        # blocking.
         try:
             return self.text_queue.get_nowait()
         except queue.Empty:
             pass
 
-        if not self.mic_available:
+        if not self.mic_available or not self.listening_enabled:
             # No mic at all: just wait on the queue instead of busy-looping.
             try:
                 return self.text_queue.get(timeout=1)
@@ -132,11 +129,11 @@ class SeaAIWorker(QObject):
 
     def _listen_mic(self):
         try:
-            with sr.Microphone() as source:
+            with sr.Microphone(device_index=self.mic_device_index) as source:
+                audio = self.recognizer.listen(source, timeout=5, phrase_time_limit=15)
                 # timeout: give up waiting for speech after 5s, so the loop
                 # re-checks the text queue and self._running instead of
                 # blocking forever. phrase_time_limit: cap one utterance at 15s.
-                audio = self.recognizer.listen(source, timeout=5, phrase_time_limit=15)
         except sr.WaitTimeoutError:
             return None
         except OSError as e:
@@ -178,7 +175,7 @@ class SeaAIWorker(QObject):
                 model="openai/gpt-oss-120b",
                 messages=self.history,
                 temperature=0.7,
-                max_tokens=512,
+                max_tokens=1024,
                 timeout=15.0,
             )
         except Exception as e:
@@ -214,3 +211,6 @@ class SeaAIWorker(QObject):
         finally:
             if output_path and os.path.exists(output_path):
                 os.remove(output_path)
+
+    def set_listening_enabled(self, enabled: bool):
+        self.listening_enabled = enabled
