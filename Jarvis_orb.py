@@ -5,7 +5,6 @@ from PyQt6.QtWidgets import QWidget, QApplication, QVBoxLayout, QLineEdit
 from PyQt6.QtCore import Qt, QTimer
 from PyQt6.QtGui import QPainter, QColor, QRadialGradient, QPen, QPixmap
 
-
 class SpeakingOrb(QWidget):
     State_Colors = {"Idle": QColor(80, 80, 120),
                     "Listening": QColor(40, 120, 200),
@@ -24,7 +23,6 @@ class SpeakingOrb(QWidget):
         self.state = "Idle"
         self.phase = 0.0
 
-        # Load the logo once, resolved relative to this script's location
         script_dir = os.path.dirname(os.path.abspath(__file__))
         logo_path = os.path.join(script_dir, "shared image.png")
         self.logo = QPixmap(logo_path)
@@ -64,10 +62,28 @@ class SpeakingOrb(QWidget):
         painter.setPen(QPen(Qt.PenStyle.NoPen))
         painter.setBrush(gradient)
         painter.drawEllipse(int(center_x - radius), int(center_y - radius), int(radius * 2), int(radius * 2))
+        highlight_x = center_x - (radius * 0.45)
+        highlight_y = center_y - (radius * 0.45)
+       
+        highlight_radius = radius * 0.28  
+       
+        highlight_gradient = QRadialGradient(highlight_x, highlight_y, highlight_radius)
+       
+        glare_color = orb_color.lighter(200)
+        highlight_gradient.setColorAt(0.0, QColor(glare_color.red(), glare_color.green(), glare_color.blue(), 180))
+        highlight_gradient.setColorAt(1.0, QColor(glare_color.red(), glare_color.green(), glare_color.blue(), 0))
+       
+        painter.setBrush(highlight_gradient)
+       
+        painter.drawEllipse(
+            int(highlight_x - highlight_radius),
+            int(highlight_y - highlight_radius),
+            int(highlight_radius * 2),
+            int(highlight_radius * 2)
+        )
 
-        # Draw the logo centered, scaled to fit inside the orb
         if not self.logo.isNull():
-            logo_size = int(base_radius * 0.95)  # tweak scale as you like
+            logo_size = int(base_radius * 0.95)  
             scaled_logo = self.logo.scaled(
                 logo_size, logo_size,
                 Qt.AspectRatioMode.KeepAspectRatio,
@@ -76,7 +92,6 @@ class SpeakingOrb(QWidget):
             logo_x = center_x - scaled_logo.width() / 2
             logo_y = (center_y - scaled_logo.height() / 2) - 3
             painter.drawPixmap(int(logo_x), int(logo_y), scaled_logo)
-
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)
