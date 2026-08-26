@@ -142,8 +142,8 @@ class SeaAIWorker(QObject):
         except sr.UnknownValueError:
             self.error_occurred.emit("Could not understand the audio.")
             return None
-        except sr.RequestError:
-            self.error_occurred.emit("Could not reach the recognition service.")
+        except sr.RequestError as e:
+            self.error_occurred.emit(f"Could not reach the recognition service: {e}")
             return None
 
     def _handle_pdf(self, pdf_path):
@@ -166,7 +166,7 @@ class SeaAIWorker(QObject):
     def _get_reply(self):
         try:
             response = self.client.chat.completions.create(
-                model="openai/gpt-oss-120b",
+                model="llama-3.3-70b-versatile",
                 messages=self.history,
                 temperature=0.7,
                 max_tokens=1024,
@@ -187,7 +187,7 @@ class SeaAIWorker(QObject):
             output_path = tmp_file.name
             tmp_file.close()
 
-            communicate = edge_tts.Communicate(text, self.ai_voice, rate="-20%")
+            communicate = edge_tts.Communicate(text, self.ai_voice, rate="-10%")
             try:
                 asyncio.run(asyncio.wait_for(communicate.save(output_path), timeout=15.0))
             except asyncio.TimeoutError:
