@@ -32,8 +32,11 @@ class SpeakingOrb(QWidget):
         self.timer.start(16)
 
     def State_Setting(self, new_state):
+        # An exception raised inside a Qt slot tears down the whole application,
+        # and the orb is decoration -- an unknown state must never cost the app.
         if new_state not in self.State_Colors:
-            raise ValueError(f'Unknown state mentioned: {new_state}')
+            print(f"Unknown orb state ignored: {new_state!r}")
+            return
         self.state = new_state
 
     def _animation(self):
