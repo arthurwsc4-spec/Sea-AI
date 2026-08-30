@@ -1,10 +1,12 @@
 import sys
+from html import escape
+
 from PyQt6.QtCore import Qt, QThread
 from PyQt6.QtWidgets import (
     QApplication, QWidget, QVBoxLayout, QHBoxLayout,
     QPushButton, QTextEdit, QLineEdit,
 )
-from Jarvis_Orb import SpeakingOrb
+from Jarvis_orb import SpeakingOrb
 from worker import SeaAIWorker
 
 class MainWindow(QWidget):
@@ -25,16 +27,12 @@ class MainWindow(QWidget):
         self.toggle_button.clicked.connect(self._toggle_chat)
         orb_side.addWidget(self.toggle_button, alignment=Qt.AlignmentFlag.AlignRight)
 
-        self.mic_button = QPushButton("Mic: On")
+        self.mic_button = QPushButton()
         self.mic_button.setCheckable(True)
-        self.mic_button.setChecked(True)
         self.mic_button.clicked.connect(self._toggle_mic)
         orb_side.addWidget(self.mic_button, alignment=Qt.AlignmentFlag.AlignRight)
 
-        if not self.worker.mic_available:
-            self.mic_button.setChecked(False)
-            self.mic_button.setText("Mic: Unavailable")
-            self.mic_button.setEnabled(False)
+        self.set_mic_available(self.worker.mic_available)
 
         self.orb = SpeakingOrb()
         orb_side.addWidget(self.orb, alignment=Qt.AlignmentFlag.AlignCenter)
@@ -68,7 +66,18 @@ class MainWindow(QWidget):
     def _toggle_chat(self):
         self.chat_panel.setVisible(not self.chat_panel.isVisible())
 
+    def set_mic_available(self, available):
+        """Startup state, and again if the device disappears mid-session."""
+        self.mic_button.setEnabled(available)
+        self.mic_button.setChecked(available)
+        self._toggle_mic()
+
     def _toggle_mic(self):
+        if not self.mic_button.isEnabled():
+            self.mic_button.setText("Mic: Unavailable")
+            self.worker.set_listening_enabled(False)
+            return
+
         enabled = self.mic_button.isChecked()
         self.mic_button.setText("Mic: On" if enabled else "Mic: Off")
         self.worker.set_listening_enabled(enabled)
@@ -81,13 +90,13 @@ class MainWindow(QWidget):
         self.chat_input.clear()
 
     def append_user_message(self, text):
-        self.chat_log.append(f"<b>You:</b> {text}")
+        self.chat_log.append(f"<b>You:</b> {escape(text)}")
 
     def append_ai_message(self, text):
-        self.chat_log.append(f"<b>SeaAI:</b> {text}")
+        self.chat_log.append(f"<b>SeaAI:</b> {escape(text)}")
 
     def append_error(self, text):
-        self.chat_log.append(f"<i>[Error] {text}</i>")
+        self.chat_log.append(f"<i>[Error] {escape(text)}</i>")
 
     def closeEvent(self, event):
         self.worker.stop()
@@ -118,6 +127,7 @@ def main():
     worker.user_text_received.connect(window.append_user_message)
     worker.reply_ready.connect(window.append_ai_message)
     worker.error_occurred.connect(window.append_error)
+    worker.mic_availability_changed.connect(window.set_mic_available)
     worker.error_occurred.connect(lambda msg: print(f"[Error] {msg}"))
 
     window.show()
